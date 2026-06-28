@@ -8,7 +8,12 @@
 <body>
     <div id="main-container">
         <header>
-            <nav><ul><li><a href="index.html">首頁</a></li><li><a href="submit.html" class="active">投稿靈感</a></li></ul></nav>
+            <nav>
+                <ul>
+                    <li><a href="index.html">首頁</a></li>
+                    <li><a href="submit.html" class="active">投稿靈感</a></li>
+                </ul>
+            </nav>
         </header>
         
         <main>
@@ -35,24 +40,23 @@
         </main>
 
         <script>
-            // === 請填入你的資訊 ===
-            const BIN_ID = "填入你的BIN_ID"; 
+            // === 雲端配置 ===
+            const BIN_ID = "6a414a9ff5f4af5e293dc160";
             const API_KEY = "$2a$10$5Gqgl2.2muLPGwt0Gc1aDeA41/JaPd7Gn.rIs3i4C0W23aGu4bVby";
+            const ADMIN_NAME = "時初"; // 這裡設定你的管理員名稱，確保刪除權限
 
             var userKey = sessionStorage.getItem("currentUser");
-            var myNickname = "";
-            var myAvatar = "";
 
-            // 讀取雲端資料
+            // 1. 從雲端抓取最新資料 (改為直接解析陣列)
             async function fetchFromCloud() {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
                     headers: { 'X-Master-Key': API_KEY }
                 });
                 const json = await res.json();
-                return json.record || [];
+                return json.record || []; 
             }
 
-            // 儲存雲端資料
+            // 2. 將資料存回雲端
             async function saveToCloud(posts) {
                 await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
@@ -64,18 +68,60 @@
                 });
             }
 
-            window.onload = async function() {
+            // 3. 畫面顯示邏輯 (保留原設計，加入刪除權限判斷)
+            async function renderPosts() {
+                let posts = await fetchFromCloud();
+                let listContainer = document.getElementById("admin-posts-list");
+                
+                if (!posts || posts.length === 0) {
+                    listContainer.innerHTML = "<p>目前資料庫是空的...</p>";
+                    return;
+                }
+                
+                const isAdmin = (userKey === ADMIN_NAME);
+                
+                listContainer.innerHTML = posts.map((post, i) => `
+                    <div style="border-bottom:1px solid #ccc; padding:10px;">
+                        <h4>${post.title || "無標題"}</h4>
+                        <p>${post.text || "無內文"}</p>
+                        ${isAdmin ? `<button onclick="deletePost(${i})">刪除</button>` : ""}
+                    </div>
+                `).join('');
+            }
+
+            // 4. 發佈按鈕 (同步至雲端)
+            async function processSubmit() {
+                let title = document.getElementById('material-title').value;
+                let text = document.getElementById('material-text').value;
+                let posts = await fetchFromCloud();
+                posts.push({ title: title, text: text, author: userKey });
+                await saveToCloud(posts);
+                alert("已同步至雲端！");
+                renderPosts();
+            }
+
+            // 5. 刪除按鈕 (同步至雲端)
+            async function deletePost(index) {
+                if(userKey !== ADMIN_NAME) return alert("權限不足");
+                let posts = await fetchFromCloud();
+                posts.splice(index, 1);
+                await saveToCloud(posts);
+                renderPosts();
+            }
+
+            // 6. 初始化 (保留你原有的頭像與登入邏輯)
+            window.onload = function() {
                 if (userKey) {
                     document.getElementById("lock-screen").style.display = "none";
                     document.getElementById("database-screen").style.display = "block";
+                    document.getElementById("user-display-name").innerText = userKey;
                     
-                    // 顯示用戶頭像 (處理圖片代碼)
-                    var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
-                    var myData = userDatabase[userKey] || { nickname: userKey, avatar: "👤" };
-                    document.getElementById("user-display-name").innerText = myData.nickname;
-                    
+                    // 你的頭像設定逻辑
+                    var allUsers = JSON.parse(localStorage.getItem("allUsers") || "{}");
+                    var myData = allUsers[userKey] || { avatar: "👤" };
                     var avatarSpan = document.getElementById("user-display-avatar");
-                    if (myData.avatar.startsWith("data:image")) {
+                    
+                    if (myData.avatar && myData.avatar.startsWith("data:image")) {
                         avatarSpan.innerHTML = `<img src="${myData.avatar}" style="width:30px; height:30px; border-radius:50%; vertical-align:middle;">`;
                     } else {
                         avatarSpan.innerText = myData.avatar;
@@ -84,34 +130,6 @@
                     renderPosts();
                 }
             };
-
-            async function renderPosts() {
-                let posts = await fetchFromCloud();
-                let listContainer = document.getElementById("admin-posts-list");
-                listContainer.innerHTML = posts.map((post, i) => `
-                    <div style="border-bottom:1px solid #ccc; padding:10px;">
-                        <h4>${post.title}</h4><p>${post.text}</p>
-                        <button onclick="deletePost(${i})">刪除</button>
-                    </div>
-                `).join('');
-            }
-
-            async function processSubmit() {
-                let title = document.getElementById('material-title').value;
-                let text = document.getElementById('material-text').value;
-                let posts = await fetchFromCloud();
-                posts.push({ title, text, author: userKey });
-                await saveToCloud(posts);
-                alert("已同步至雲端！");
-                renderPosts();
-            }
-
-            async function deletePost(index) {
-                let posts = await fetchFromCloud();
-                posts.splice(index, 1);
-                await saveToCloud(posts);
-                renderPosts();
-            }
         </script>
     </div>
 </body>
