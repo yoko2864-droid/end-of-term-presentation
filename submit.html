@@ -40,10 +40,10 @@
         </main>
 
         <script>
-            // === 雲端配置 (請確認與你在 JSONBin 的資訊一致) ===
+            // === 雲端配置 ===
             const BIN_ID = "6a414d08f5f4af5e293dc97d"; 
             const API_KEY = "$2a$10$5Gqgl2.2muLPGwt0Gc1aDeA41/JaPd7Gn.rIs3i4C0W23aGu4bVby";
-            const ADMIN_NAME = "時初"; // 管理員名稱，用於刪除權限判斷
+            const ADMIN_NAME = "時初"; 
 
             var userKey = sessionStorage.getItem("currentUser");
 
@@ -54,26 +54,32 @@
                         headers: { 'X-Master-Key': API_KEY }
                     });
                     const json = await res.json();
-                    return json.record || []; 
+                    return json.record.posts || []; 
                 } catch (e) {
                     console.error("雲端讀取錯誤:", e);
                     return [];
                 }
             }
 
-            // 2. 將資料存回雲端
-            async function saveToCloud(posts) {
+            // 2. 將資料存回雲端 (僅新增/更新 posts 區塊)
+            async function saveToCloud(newPostsArray) {
+                // 先取得完整物件以確保其他資料(如users)不遺失
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, { headers: { 'X-Master-Key': API_KEY } });
+                const fullData = (await res.json()).record;
+                
+                fullData.posts = newPostsArray;
+
                 await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-Master-Key': API_KEY
                     },
-                    body: JSON.stringify(posts)
+                    body: JSON.stringify(fullData)
                 });
             }
 
-            // 3. 渲染列表 (保留原設計，加入刪除權限判斷)
+            // 3. 渲染列表
             async function renderPosts() {
                 let posts = await fetchFromCloud();
                 let listContainer = document.getElementById("admin-posts-list");
@@ -89,7 +95,8 @@
                     <div style="border-bottom:1px solid #ccc; padding:10px;">
                         <h4>${post.title || "無標題"}</h4>
                         <p>${post.text || "無內文"}</p>
-                        ${isAdmin ? `<button onclick="deletePost(${i})">刪除</button>` : ""}
+                        <small>作者: ${post.author || "匿名"}</small>
+                        ${isAdmin ? `<br><button onclick="deletePost(${i})">刪除</button>` : ""}
                     </div>
                 `).join('');
             }
@@ -98,9 +105,14 @@
             async function processSubmit() {
                 let title = document.getElementById('material-title').value;
                 let text = document.getElementById('material-text').value;
+                if(!title || !text) return alert("請輸入標題與內文！");
+
                 let posts = await fetchFromCloud();
                 posts.push({ title: title, text: text, author: userKey });
                 await saveToCloud(posts);
+                
+                document.getElementById('material-title').value = "";
+                document.getElementById('material-text').value = "";
                 alert("已同步至雲端！");
                 renderPosts();
             }
@@ -114,22 +126,21 @@
                 renderPosts();
             }
 
-            // 6. 初始化載入 (保留原頭像與使用者邏輯)
+            // 6. 初始化載入
             window.onload = function() {
                 if (userKey) {
                     document.getElementById("lock-screen").style.display = "none";
                     document.getElementById("database-screen").style.display = "block";
                     document.getElementById("user-display-name").innerText = userKey;
                     
-                    // 從 localStorage 讀取你的頭像設定
                     var allUsers = JSON.parse(localStorage.getItem("allUsers") || "{}");
                     var myData = allUsers[userKey] || { avatar: "👤" };
                     var avatarSpan = document.getElementById("user-display-avatar");
                     
-                    if (myData.avatar && myData.avatar.startsWith("data:image")) {
+                    if (myData.avatar && (myData.avatar.startsWith("data:image") || myData.avatar.startsWith("http"))) {
                         avatarSpan.innerHTML = `<img src="${myData.avatar}" style="width:30px; height:30px; border-radius:50%; vertical-align:middle;">`;
                     } else {
-                        avatarSpan.innerText = myData.avatar;
+                        avatarSpan.innerText = myData.avatar || "👤";
                     }
                     
                     renderPosts();
