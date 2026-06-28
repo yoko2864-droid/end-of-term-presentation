@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>投稿靈感 - 個人寫作後台與故事管理</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="main-container">
+        <header>
+            <img src="logo.png" alt="獨一無二的故事" class="logo">
+            <nav>
+                <ul>
+                    <li><a href="index.html">首頁</a></li>
+                    <li><a href="archive.html">意象分類</a></li>
+                    <li><a href="characters.html">角色設定</a></li>
+                    <li><a href="member.html">會員控制</a></li>
+                    <li><a href="submit.html" class="active">投稿靈感</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main>
+            <div id="lock-screen" style="text-align: center; padding: 40px 0;">
+                <h2>⚠️ 尚未辨識創作者身份</h2>
+                <p style="color: #7f8c8d;">此區塊需要綁定創作者權限，請先前往登入或註冊。</p>
+                <a href="member.html"><button style="width: auto;">前往會員控制台設定資料</button></a>
+            </div>
+
+            <div id="database-screen" style="display: none;">
+                <h2>
+                    創作者後台：歡迎 <span id="user-display-name" style="color: #e67e22;"></span> 
+                    <span id="user-display-avatar"></span>
+                    <!-- 👑 超級管理員專屬標籤 -->
+                    <span id="admin-badge" style="display:none; background-color:#9b59b6; color:white; font-size:12px; padding:3px 8px; border-radius:12px; margin-left:10px; vertical-align:middle;">👑 超級管理員</span>
+                </h2>
+                <p style="color: #7f8c8d;">在這裡發布或編輯的創作片段，會同步連同您的「最新暱稱與頭像」發表至首頁廣場。</p>
+                
+                <!-- 投稿與編輯表單 -->
+                <div style="max-width: 600px; margin-top: 25px; background: #fafafa; padding: 20px; border: 1px solid #e0e0e0; border-radius: 6px;">
+                    <h3 id="form-action-title" style="margin-top:0; color:#2c3e50;">✨ 發佈新靈感素材</h3>
+                    
+                    <input type="hidden" id="edit-index" value="-1">
+
+                    <div class="form-group">
+                        <label for="author-mode">故事廣場發表身份</label>
+                        <select id="author-mode">
+                            <option value="公開">公開（顯示我的手設暱稱與頭像）</option>
+                            <option value="匿名">匿名發表（顯示為：神秘創作者 👤）</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="material-title">素材暫存標題</label>
+                        <input type="text" id="material-title" placeholder="例如：破碎的鏡中人">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="material-text">敘事文字內文</label>
+                        <textarea id="material-text" rows="4" placeholder="輸入你想分享的故事段落..."></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" id="submit-btn" onclick="processSubmit()" style="background-color: #2c3e50;">發佈至故事廣場資料庫</button>
+                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" style="background-color: #95a5a6; display: none; width: auto;">取消修改</button>
+                    </div>
+                </div>
+
+                <!-- 故事管理後台清單 -->
+                <div style="margin-top: 40px;">
+                    <h3>📋 故事廣場總資料庫管理 (<span id="permission-hint">僅限修改/刪除自己的創作</span>)</h3>
+                    <p style="font-size: 13px; color: #7f8c8d; margin-bottom: 15px;">下方為廣場的所有故事。系統已根據您的權限進行身份別鎖定：</p>
+                    <div id="admin-posts-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <script>
+            var userKey = ""; 
+            var myNickname = "";
+            var myAvatar = "";
+            var myAvatarImg = "";
+            var isAdmin = false; 
+
+            window.onload = function() {
+                var currentUser = sessionStorage.getItem("currentUser");
+                if (currentUser) {
+                    userKey = currentUser;
+                    
+                    // 🔒【修正管理員判定】支援管理員帳號為 "時初" 或 "admin"
+                    if (userKey === "時初" || userKey.toLowerCase() === "admin") {
+                        isAdmin = true;
+                        document.getElementById("admin-badge").style.display = "inline-block";
+                        document.getElementById("permission-hint").innerText = "最高權限：可管理全站所有故事";
+                        document.getElementById("permission-hint").style.color = "#9b59b6";
+                    }
+                    
+                    var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                    var myData = userDatabase[userKey];
+                    
+                    if (myData) {
+                        myNickname = myData.nickname;
+                        myAvatar = myData.avatar;
+                        myAvatarImg = myData.avatarImg || ""; 
+                    } else {
+                        myNickname = userKey;
+                        myAvatar = "🌹 黑色玫瑰";
+                        myAvatarImg = "";
+                    }
+
+                    document.getElementById("lock-screen").style.display = "none";
+                    document.getElementById("database-screen").style.display = "block";
+                    
+                    document.getElementById("user-display-name").innerText = myNickname;
+                    if (myAvatarImg !== "") {
+                        document.getElementById("user-display-avatar").innerHTML = '<img src="' + myAvatarImg + '" style="width:30px; height:30px; object-fit:cover; border-radius:50%; vertical-align:middle; margin-left:5px;">';
+                    } else {
+                        document.getElementById("user-display-avatar").innerText = myAvatar.split(" ")[0];
+                    }
+
+                    renderAdminPosts();
+                }
+            };
+
+            // 渲染故事列表
+            function renderAdminPosts() {
+                var listContainer = document.getElementById("admin-posts-list");
+                var globalPosts = JSON.parse(localStorage.getItem("globalPosts")) || [];
+
+                if (globalPosts.length === 0) {
+                    listContainer.innerHTML = '<p style="color:#999; font-style:italic;">目前資料庫空空如也...</p>';
+                    return;
+                }
+
+                var html = "";
+                for (var i = globalPosts.length - 1; i >= 0; i--) {
+                    var formattedText = (globalPosts[i].text || "").replace(/\n/g, '<br>');
+
+                    html += '<div style="background: #f9f9f9; border-left: 4px solid #34495e; padding: 15px; margin-bottom: 15px; border-radius: 0 4px 4px 0; display: flex; justify-content: space-between; align-items: center;">';
+                    html += '<div style="text-align: left; padding-right: 20px; flex-grow: 1;">';
+                    html += '<h4 style="margin: 0 0 5px 0;">' + globalPosts[i].title + ' <span style="font-size:12px; color:#e67e22; margin-left:10px;">✍️ ' + globalPosts[i].author + '</span></h4>';
+                    html += '<p style="margin: 0; color: #555; font-size: 14px; line-height: 1.5;">' + formattedText + '</p>';
+                    html += '</div>';
+                    
+                    // 🔒 如果是本人創作或超級管理員，解鎖按鈕
+                    if (globalPosts[i].owner === userKey || isAdmin) {
+                        html += '<div style="display: flex; gap: 5px; flex-shrink: 0;">';
+                        html += '<button onclick="prepareEdit(' + i + ')" style="background-color: #3498db; width: auto; padding: 5px 12px; font-size: 12px;">✏️ 修改</button>';
+                        html += '<button onclick="deletePost(' + i + ')" style="background-color: #e74c3c; width: auto; padding: 5px 12px; font-size: 12px;">🗑️ 刪除</button>';
+                        html += '</div>';
+                    } else {
+                        html += '<div style="color: #bdc3c7; font-size: 12px; flex-shrink: 0; padding: 5px 10px; background: #eee; border-radius:3px;">🔒 他人創作 (唯讀)</div>';
+                    }
+                    
+                    html += '</div>';
+                }
+                listContainer.innerHTML = html;
+            }
+
+            function processSubmit() {
+                var title = document.getElementById('material-title').value.trim();
+                var text = document.getElementById('material-text').value; 
+                var mode = document.getElementById('author-mode').value;
+                var editIndex = parseInt(document.getElementById('edit-index').value);
+                
+                if (title === "" || text.trim() === "") {
+                    alert("請完整填寫標題與內文！");
+                    return;
+                }
+
+                var showName = "";
+                if (mode === "公開") {
+                    if (myAvatarImg !== "") {
+                        showName = '<img src="' + myAvatarImg + '" style="width:18px; height:18px; object-fit:cover; border-radius:50%; vertical-align:middle; margin-right:5px;">' + myNickname;
+                    } else {
+                        showName = myAvatar.split(" ")[0] + " " + myNickname;
+                    }
+                } else {
+                    showName = "👤 神秘創作者";
+                }
+
+                var globalPosts = JSON.parse(localStorage.getItem("globalPosts")) || [];
+
+                if (editIndex === -1) {
+                    var newPost = { 
+                        title: title, 
+                        text: text, 
+                        author: showName,
+                        owner: userKey 
+                    };
+                    globalPosts.push(newPost);
+                    alert("【資料庫同步】新故事已成功發佈！正在為您跳轉至首頁...");
+                } else {
+                    if (globalPosts[editIndex].owner !== userKey && !isAdmin) {
+                        alert("【權限錯誤】您無權修改這篇故事片段！");
+                        cancelEdit();
+                        return;
+                    }
+                    globalPosts[editIndex].title = title;
+                    globalPosts[editIndex].text = text;
+                    if (!isAdmin) {
+                        globalPosts[editIndex].author = showName;
+                    }
+                    alert("【資料庫同步】故事片段已成功更新！");
+                }
+
+                localStorage.setItem("globalPosts", JSON.stringify(globalPosts));
+                cancelEdit();
+                
+                setTimeout(function() {
+                    window.location.href = "index.html";
+                }, 500);
+            }
+
+            function prepareEdit(index) {
+                var globalPosts = JSON.parse(localStorage.getItem("globalPosts")) || [];
+                var post = globalPosts[index];
+
+                if (post) {
+                    if (post.owner !== userKey && !isAdmin) {
+                        alert("【操作拒絕】權限不足！");
+                        return;
+                    }
+
+                    document.getElementById('material-title').value = post.title;
+                    document.getElementById('material-text').value = post.text; 
+                    document.getElementById('edit-index').value = index;
+
+                    document.getElementById('form-action-title').innerText = "✏️ 正在管理修正故事片段";
+                    document.getElementById('submit-btn').innerText = "確認儲存修改";
+                    document.getElementById('submit-btn').style.background = "#3498db";
+                    document.getElementById('cancel-edit-btn').style.display = "inline-block";
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+
+            function cancelEdit() {
+                document.getElementById('material-title').value = "";
+                document.getElementById('material-text').value = "";
+                document.getElementById('edit-index').value = "-1";
+
+                document.getElementById('form-action-title').innerText = "✨ 發佈新靈感素材";
+                document.getElementById('submit-btn').innerText = "發佈至故事廣場資料庫";
+                document.getElementById('submit-btn').style.background = "#2c3e50";
+                document.getElementById('cancel-edit-btn').style.display = "none";
+            }
+
+            function deletePost(index) {
+                var globalPosts = JSON.parse(localStorage.getItem("globalPosts")) || [];
+                
+                if (globalPosts[index].owner !== userKey && !isAdmin) {
+                    alert("【操作拒絕】權限不足！");
+                    return;
+                }
+
+                if (!confirm("確定要執行管理員權限，將這則故事從公共廣場中永久刪除嗎？")) return;
+
+                globalPosts.splice(index, 1);
+                localStorage.setItem("globalPosts", JSON.stringify(globalPosts));
+
+                alert("【已刪除】故事已成功從廣場資料庫移出。");
+                renderAdminPosts();
+            }
+        </script>
+
+        <footer>&copy; 2026 小說創作素材與意象資料庫平台 - 期末作品呈現</footer>
+    </div>
+</body>
+</html>

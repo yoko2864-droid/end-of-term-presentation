@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>會員控制 - 創作者身份綁定與管理</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="main-container">
+        <header>
+            <img src="logo.png" alt="獨一無二的故事" class="logo">
+            <nav>
+                <ul>
+                    <li><a href="index.html">首頁</a></li>
+                    <li><a href="archive.html">意象分類</a></li>
+                    <li><a href="characters.html">角色設定</a></li>
+                    <li><a href="member.html" class="active">會員控制</a></li>
+                    <li><a href="submit.html">投稿靈感</a></li>
+                </ul>
+            </nav>
+        </header>
+        
+        <main style="max-width: 500px; margin: 40px auto; background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+            
+            <div id="auth-section">
+                <h2 id="auth-title" style="text-align: center; color: #2c3e50; margin-bottom: 20px;">創作者身份辨識</h2>
+                <div class="form-group"><label for="username">創作者帳號 (Username)</label><input type="text" id="username" placeholder="請輸入您的帳號"></div>
+                <div class="form-group" id="password-group"><label for="password">密碼 (Password)</label><input type="password" id="password" placeholder="請輸入密碼"></div>
+                <div class="form-group" id="security-group" style="display: none;"><label for="security-code" style="color: #e74c3c;">安全驗證碼 (預設為 1234)</label><input type="text" id="security-code" placeholder="請輸入安全代碼以驗證身份"></div>
+                <div class="form-group" id="forgot-new-pwd-group" style="display: none;"><label for="forgot-new-pwd" style="color: #2ecc71;">設定新密碼</label><input type="password" id="forgot-new-pwd" placeholder="請輸入您想替換的新密碼"></div>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 20px;">
+                    <button type="button" id="primary-btn" onclick="handlePrimaryAction()" style="background-color: #2c3e50;">登入寫作後台</button>
+                    <button type="button" id="switch-btn" onclick="toggleAuthMode()" style="background-color: #95a5a6; font-size: 13px;">還沒有帳號？前往註冊</button>
+                    <button type="button" id="forgot-btn" onclick="showForgotMode()" style="background: none; color: #7f8c8d; border: none; text-decoration: underline; cursor: pointer; font-size: 13px; margin-top: 5px;">忘記密碼？</button>
+                </div>
+            </div>
+
+            <div id="profile-section" style="display: none;">
+                <h2 style="text-align: center; color: #2c3e50; margin-bottom: 10px;">創作者控制台</h2>
+                
+                <div style="background: #fafafa; padding: 15px; border-radius: 6px; border: 1px solid #eaeaea; margin-bottom: 20px;">
+                    <p style="margin: 5px 0;"><strong>帳號：</strong> <span id="lbl-username"></span></p>
+                    <p style="margin: 5px 0;"><strong>暱稱：</strong> <span id="lbl-nickname" style="color:#e67e22; font-weight:bold;"></span></p>
+                    <p style="margin: 5px 0; display: flex; align-items: center; gap: 10px;">
+                        <strong>當前頭像：</strong> <span id="lbl-avatar-container"></span>
+                    </p>
+                </div>
+
+                <div style="background: #fdfdfd; padding: 15px; border-radius: 6px; border: 1px solid #eee; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #34495e;">✍️ 基本身分設定</h4>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-size: 12px;">我要顯示的名稱 (筆名)</label>
+                        <input type="text" id="edit-nickname" style="padding: 6px; width: 100%; box-sizing: border-box;" placeholder="輸入您的筆名">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-size: 12px;">選擇預設文字頭像</label>
+                        <select id="edit-avatar-select" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px;" onchange="syncAvatarMode('select')">
+                            <option value="🌹 黑色玫瑰">🌹 黑色玫瑰</option>
+                            <option value="👤 神秘創作者">👤 神秘創作者</option>
+                            <option value="✍️ 唯美筆尖">✍️ 唯美筆尖</option>
+                            <option value="🔮 悲劇宿命">🔮 悲劇宿命</option>
+                            <option value="CUSTOM_TEXT">➡️ 自訂文字頭像（在下方輸入文字）</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="custom-text-avatar-group" style="margin-bottom: 5px; display: none;">
+                        <label style="font-size: 12px; color: #e67e22;">請輸入您想顯示的頭像文字/符號</label>
+                        <input type="text" id="edit-avatar-text" style="padding: 6px; width: 100%; box-sizing: border-box;" placeholder="例如：🌙 玄夜影落">
+                    </div>
+                </div>
+
+                <div style="background: #fdfdfd; padding: 15px; border-radius: 6px; border: 1px solid #eee; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #34495e;">🖼️ 頭像進階設定 (圖片)</h4>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label style="font-size: 12px;">使用圖片網址</label>
+                        <input type="text" id="edit-avatar-url" style="padding: 6px; width: 100%; box-sizing: border-box;" placeholder="https://..." oninput="syncAvatarMode('url')">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px;">或從本機選取照片</label><br>
+                        <label for="local-file-input" style="background-color: #3498db; color: white; padding: 6px 12px; font-size: 12px; border-radius: 4px; cursor: pointer;">選擇相片檔案</label>
+                        <span id="file-chosen-text" style="font-size: 11px; color: #7f8c8d; margin-left: 5px;">未選擇</span>
+                        <input type="file" id="local-file-input" accept="image/*" style="display: none;" onchange="handleLocalFileSelect()">
+                    </div>
+                </div>
+
+                <button type="button" onclick="updateProfile()" style="background-color: #e67e22; padding: 10px; width: 100%; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px;">儲存上述所有變更</button>
+
+                <div style="background: #fcfcfc; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #2980b9;">🏷️ 我的風格標籤</h4>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <input type="text" id="new-tag-input" style="padding: 6px; flex-grow: 1;" placeholder="新增標籤...">
+                        <button type="button" onclick="addNewTag()" style="background-color: #2980b9; padding: 6px 12px; font-size: 13px;">新增</button>
+                    </div>
+                    <span id="lbl-tags-container" style="display: flex; flex-wrap: wrap; gap: 5px;"></span>
+                </div>
+
+                <div style="background: #f1f2f6; padding: 15px; border-radius: 6px; border: 1px solid #dcdde1; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">🔒 安全中心：修改密碼</h4>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="change-old-pwd" style="font-size: 12px;">輸入舊密碼</label>
+                        <input type="password" id="change-old-pwd" style="padding: 6px; width: 100%; box-sizing: border-box;" placeholder="目前的舊密碼">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="change-new-pwd" style="font-size: 12px;">設定新密碼</label>
+                        <input type="password" id="change-new-pwd" style="padding: 6px; width: 100%; box-sizing: border-box;" placeholder="全新密碼">
+                    </div>
+                    <button type="button" onclick="changePassword()" style="background-color: #34495e; padding: 6px; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">確認修改密碼</button>
+                </div>
+
+                <button type="button" onclick="handleLogout()" style="background-color: #e74c3c; width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; cursor: pointer;">登出帳號</button>
+            </div>
+        </main>
+
+        <script>
+            var currentMode = 'login'; 
+            var localBase64Data = "";
+
+            window.onload = function() { checkLoginStatus(); };
+
+            function checkLoginStatus() {
+                var currentUser = sessionStorage.getItem("currentUser");
+                if (currentUser) {
+                    document.getElementById("auth-section").style.display = "none";
+                    document.getElementById("profile-section").style.display = "block";
+                    document.getElementById("lbl-username").innerText = currentUser;
+                    
+                    var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                    var myData = userDatabase[currentUser];
+                    if (myData) {
+                        document.getElementById("lbl-nickname").innerText = myData.nickname || currentUser;
+                        document.getElementById("edit-nickname").value = myData.nickname || currentUser;
+                        
+                        var avatar = myData.avatar || "🌹 黑色玫瑰";
+                        
+                        document.getElementById("custom-text-avatar-group").style.display = "none";
+                        document.getElementById("edit-avatar-url").value = "";
+
+                        if (avatar.startsWith("http") || avatar.startsWith("data:image")) {
+                            document.getElementById("lbl-avatar-container").innerHTML = `<img src="${avatar}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">`;
+                            if (avatar.startsWith("http")) {
+                                document.getElementById("edit-avatar-url").value = avatar;
+                            }
+                        } else {
+                            document.getElementById("lbl-avatar-container").innerText = avatar;
+                            
+                            var defaultAvatars = ["🌹 黑色玫瑰", "👤 神秘創作者", "✍️ 唯美筆尖", "🔮 悲劇宿命"];
+                            if (defaultAvatars.includes(avatar)) {
+                                document.getElementById("edit-avatar-select").value = avatar;
+                            } else {
+                                document.getElementById("edit-avatar-select").value = "CUSTOM_TEXT";
+                                document.getElementById("custom-text-avatar-group").style.display = "block";
+                                document.getElementById("edit-avatar-text").value = avatar;
+                            }
+                        }
+                        renderTags(myData.tags || []);
+                    }
+                } else {
+                    document.getElementById("auth-section").style.display = "block";
+                    document.getElementById("profile-section").style.display = "none";
+                }
+            }
+
+            function syncAvatarMode(type) {
+                var selectVal = document.getElementById("edit-avatar-select").value;
+                if (type === 'select') {
+                    if (selectVal === "CUSTOM_TEXT") {
+                        document.getElementById("custom-text-avatar-group").style.display = "block";
+                    } else {
+                        document.getElementById("custom-text-avatar-group").style.display = "none";
+                    }
+                    document.getElementById("edit-avatar-url").value = "";
+                    document.getElementById("file-chosen-text").innerText = "未選擇";
+                    document.getElementById("local-file-input").value = "";
+                    localBase64Data = "";
+                } else if (type === 'url') {
+                    document.getElementById("custom-text-avatar-group").style.display = "none";
+                    document.getElementById("file-chosen-text").innerText = "未選擇";
+                    document.getElementById("local-file-input").value = "";
+                    localBase64Data = "";
+                }
+            }
+
+            function handleLocalFileSelect() {
+                var file = document.getElementById("local-file-input").files[0];
+                if (!file) return;
+                document.getElementById("file-chosen-text").innerText = file.name;
+                
+                document.getElementById("edit-avatar-url").value = "";
+                document.getElementById("custom-text-avatar-group").style.display = "none";
+
+                var reader = new FileReader();
+                reader.onloadend = function() { localBase64Data = reader.result; };
+                reader.readAsDataURL(file);
+            }
+
+            function updateProfile() {
+                var currentUser = sessionStorage.getItem("currentUser");
+                var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                var selectAvatar = document.getElementById("edit-avatar-select").value;
+                var urlAvatar = document.getElementById("edit-avatar-url").value.trim();
+
+                userDatabase[currentUser].nickname = document.getElementById("edit-nickname").value.trim() || currentUser;
+                
+                if (localBase64Data) {
+                    userDatabase[currentUser].avatar = localBase64Data;
+                } else if (urlAvatar) {
+                    userDatabase[currentUser].avatar = urlAvatar;
+                } else if (selectAvatar === "CUSTOM_TEXT") {
+                    var customTxt = document.getElementById("edit-avatar-text").value.trim();
+                    if (!customTxt) {
+                        alert("請輸入您想設定的自訂頭像文字！");
+                        return;
+                    }
+                    userDatabase[currentUser].avatar = customTxt;
+                } else {
+                    userDatabase[currentUser].avatar = selectAvatar;
+                }
+
+                localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                alert("個人資料與頭像已成功更新！");
+                
+                localBase64Data = "";
+                document.getElementById("file-chosen-text").innerText = "未選擇";
+                document.getElementById("local-file-input").value = "";
+                
+                checkLoginStatus();
+            }
+
+            function renderTags(tagsArray) {
+                var container = document.getElementById("lbl-tags-container");
+                container.innerHTML = "";
+                if (tagsArray.length === 0) {
+                    container.innerHTML = `<span style="color:#95a5a6; font-size:12px;">尚未設定任何寫作風格。</span>`;
+                    return;
+                }
+                tagsArray.forEach(function(tag, index) {
+                    var tagSpan = document.createElement("span");
+                    tagSpan.style.cssText = "background: #34495e; color: #fff; padding: 3px 8px; border-radius: 20px; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 5px;";
+                    tagSpan.innerHTML = `${tag} <b onclick="removeTag(${index})" style="color: #ff7675; cursor: pointer; font-size: 14px;">&times;</b>`;
+                    container.appendChild(tagSpan);
+                });
+            }
+
+            function addNewTag() {
+                var currentUser = sessionStorage.getItem("currentUser");
+                var tagInput = document.getElementById("new-tag-input").value.trim();
+                if (tagInput === "") return;
+
+                var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                if (userDatabase[currentUser]) {
+                    var currentTags = userDatabase[currentUser].tags || [];
+                    if (currentTags.indexOf(tagInput) !== -1) {
+                        alert("這個風格標籤已經存在囉！");
+                        return;
+                    }
+                    currentTags.push(tagInput);
+                    userDatabase[currentUser].tags = currentTags;
+                    localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                    document.getElementById("new-tag-input").value = "";
+                    checkLoginStatus();
+                }
+            }
+
+            function removeTag(index) {
+                var currentUser = sessionStorage.getItem("currentUser");
+                var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                if (userDatabase[currentUser]) {
+                    var currentTags = userDatabase[currentUser].tags || [];
+                    currentTags.splice(index, 1);
+                    userDatabase[currentUser].tags = currentTags;
+                    localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                    checkLoginStatus();
+                }
+            }
+
+            // 🛠️ 補回：忘記密碼模式切換
+            function showForgotMode() {
+                currentMode = 'forgot';
+                document.getElementById("auth-title").innerText = "🔑 忘記密碼重置中心";
+                document.getElementById("primary-btn").innerText = "驗證代碼並重設密碼";
+                document.getElementById("switch-btn").innerText = "返回登入畫面";
+                
+                document.getElementById("password-group").style.display = "none";
+                document.getElementById("security-group").style.display = "block";
+                document.getElementById("forgot-new-pwd-group").style.display = "block";
+                document.getElementById("forgot-btn").style.display = "none";
+            }
+
+            function toggleAuthMode() {
+                if (currentMode === 'login' || currentMode === 'forgot') {
+                    currentMode = 'register';
+                    document.getElementById("auth-title").innerText = "新創作者註冊";
+                    document.getElementById("primary-btn").innerText = "完成註冊並登入";
+                    document.getElementById("switch-btn").innerText = "已有帳號？前往登入";
+                    document.getElementById("password-group").style.display = "block";
+                    document.getElementById("security-group").style.display = "none";
+                    document.getElementById("forgot-new-pwd-group").style.display = "none";
+                    document.getElementById("forgot-btn").style.display = "none";
+                } else {
+                    currentMode = 'login';
+                    document.getElementById("auth-title").innerText = "創作者身份辨識";
+                    document.getElementById("primary-btn").innerText = "登入寫作後台";
+                    document.getElementById("switch-btn").innerText = "還沒有帳號？前往註冊";
+                    document.getElementById("password-group").style.display = "block";
+                    document.getElementById("security-group").style.display = "none";
+                    document.getElementById("forgot-new-pwd-group").style.display = "none";
+                    document.getElementById("forgot-btn").style.display = "inline-block";
+                }
+            }
+
+            // 🛠️ 補回與優化：主按鈕行為（包含登入、註冊、與忘記密碼驗證）
+            function handlePrimaryAction() {
+                var userInput = document.getElementById("username").value.trim();
+                var pwdInput = document.getElementById("password").value;
+                var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+
+                if (userInput === "") { alert("請輸入帳號！"); return; }
+
+                if (currentMode === 'login') {
+                    if (userDatabase[userInput] && userDatabase[userInput].password === pwdInput) {
+                        sessionStorage.setItem("currentUser", userInput);
+                        alert("身份辨識成功！歡迎回到寫作空間。");
+                        checkLoginStatus();
+                    } else {
+                        alert("帳號或密碼錯誤，請重新確認！");
+                    }
+                } 
+                else if (currentMode === 'register') {
+                    if (pwdInput === "") { alert("請設定密碼！"); return; }
+                    if (userDatabase[userInput]) { alert("該帳號已被註冊，請換一個名字！"); return; }
+                    
+                    userDatabase[userInput] = {
+                        password: pwdInput,
+                        nickname: userInput,
+                        avatar: "🌹 黑色玫瑰",
+                        tags: ["悲劇", "唯美"], 
+                        securityCode: "1234"
+                    };
+                    localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                    sessionStorage.setItem("currentUser", userInput);
+                    alert("創作者帳號註冊成功！系統已為您自動登入。");
+                    checkLoginStatus();
+                }
+                else if (currentMode === 'forgot') {
+                    var codeInput = document.getElementById("security-code").value.trim();
+                    var newPwdInput = document.getElementById("forgot-new-pwd").value;
+
+                    if (!userDatabase[userInput]) {
+                        alert("找不到此創作者帳號，請確認是否輸入正確！");
+                        return;
+                    }
+                    if (codeInput === "") { alert("請輸入安全驗證碼！"); return; }
+                    if (newPwdInput === "") { alert("請輸入你想設定的新密碼！"); return; }
+
+                    var realCode = userDatabase[userInput].securityCode || "1234";
+                    
+                    if (codeInput === realCode) {
+                        userDatabase[userInput].password = newPwdInput;
+                        localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                        alert("【密碼重置成功】您的新密碼已同步！請用新密碼進行登入。");
+                        
+                        document.getElementById("security-code").value = "";
+                        document.getElementById("forgot-new-pwd").value = "";
+                        currentMode = 'register'; // 巧妙藉由切換回登入狀態
+                        toggleAuthMode();
+                    } else {
+                        alert("安全驗證碼錯誤！無法重設密碼。");
+                    }
+                }
+            }
+
+            // 🛠️ 補回：安全中心修改密碼功能
+            function changePassword() {
+                var currentUser = sessionStorage.getItem("currentUser");
+                var oldPwd = document.getElementById("change-old-pwd").value;
+                var newPwd = document.getElementById("change-new-pwd").value;
+                
+                if (oldPwd === "" || newPwd === "") {
+                    alert("請完整填寫舊密碼與新密碼！");
+                    return;
+                }
+
+                var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                
+                if (userDatabase[currentUser].password !== oldPwd) {
+                    alert("【修改失敗】舊密碼輸入錯誤！");
+                    return;
+                }
+
+                userDatabase[currentUser].password = newPwd;
+                localStorage.setItem("allUsers", JSON.stringify(userDatabase));
+                
+                alert("【安全中心】密碼修改成功！新密碼已即時生效。");
+                document.getElementById("change-old-pwd").value = "";
+                document.getElementById("change-new-pwd").value = "";
+            }
+
+            function handleLogout() {
+                sessionStorage.removeItem("currentUser");
+                alert("已成功安全登出創作者身份。");
+                currentMode = 'register';
+                toggleAuthMode();
+                checkLoginStatus();
+            }
+        </script>
+    </div>
+</body>
+</html>
