@@ -27,33 +27,49 @@
             </p>
             
             <div id="public-wall" class="inspiration-list">
-                </div>
+                <p style="text-align: center;">讀取雲端故事中...</p>
+            </div>
         </main>
 
         <script>
-            window.onload = function() {
+            // === 雲端配置 ===
+            const BIN_ID = "6a414d08f5f4af5e293dc97d"; 
+            const API_KEY = "$2a$10$5Gqgl2.2muLPGwt0Gc1aDeA41/JaPd7Gn.rIs3i4C0W23aGu4bVby";
+
+            window.onload = async function() {
                 var publicWall = document.getElementById("public-wall");
-                var posts = JSON.parse(localStorage.getItem("globalPosts")) || [];
                 
-                if (posts.length === 0) {
-                    posts = [
-                        { title: "預設素材：遺留的記憶", text: "那段記憶既是希望，\n也是關於你留下的最後的痕跡。", author: "系統管理員" },
-                        { title: "預設素材：神的惡作劇", text: "沒有東西是免費的，\n就算是神明給的也是。", author: "系統管理員" }
-                    ];
-                    localStorage.setItem("globalPosts", JSON.stringify(posts));
-                }
+                try {
+                    // 從雲端抓取最新資料
+                    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                        headers: { 'X-Master-Key': API_KEY }
+                    });
+                    const json = await res.json();
+                    let posts = json.record.posts || [];
+                    
+                    // 如果沒有資料，放入預設素材
+                    if (posts.length === 0) {
+                        posts = [
+                            { title: "預設素材：遺留的記憶", text: "那段記憶既是希望，\n也是關於你留下的最後的痕跡。", author: "系統管理員" },
+                            { title: "預設素材：神的惡作劇", text: "沒有東西是免費的，\n就算是神明給的也是。", author: "系統管理員" }
+                        ];
+                    }
 
-                var htmlContent = "";
-                for (var i = posts.length - 1; i >= 0; i--) {
-                    // 【核心修正】把故事內容裡的所有換行字元 \n 強制換成 HTML 的 <br> 標籤
-                    var formattedText = posts[i].text.replace(/\n/g, '<br>');
+                    var htmlContent = "";
+                    // 反向顯示，讓最新的在上面
+                    for (var i = posts.length - 1; i >= 0; i--) {
+                        var formattedText = posts[i].text.replace(/\n/g, '<br>');
+                        htmlContent += '<div class="inspiration-item">';
+                        htmlContent += '<h4>' + (posts[i].title || "無標題") + ' <span style="font-size:12px; color:#e67e22; margin-left:10px;">✍️ 創作者: ' + (posts[i].author || "匿名") + '</span></h4>';
+                        htmlContent += '<p>' + formattedText + '</p>';
+                        htmlContent += '</div>';
+                    }
+                    publicWall.innerHTML = htmlContent;
 
-                    htmlContent += '<div class="inspiration-item">';
-                    htmlContent += '<h4>' + posts[i].title + ' <span style="font-size:12px; color:#e67e22; margin-left:10px;">✍️ 創作者: ' + posts[i].author + '</span></h4>';
-                    htmlContent += '<p>' + formattedText + '</p>'; // 顯示完美換行後的內文
-                    htmlContent += '</div>';
+                } catch (e) {
+                    console.error("雲端讀取失敗:", e);
+                    publicWall.innerHTML = "<p style='text-align:center; color:red;'>無法連線至雲端資料庫，請檢查網路。</p>";
                 }
-                publicWall.innerHTML = htmlContent;
             };
         </script>
 
