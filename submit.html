@@ -8,141 +8,111 @@
 <body>
     <div id="main-container">
         <header>
-            <img src="logo.png" alt="獨一無二的故事" class="logo">
-            <nav>
-                <ul>
-                    <li><a href="index.html">首頁</a></li>
-                    <li><a href="archive.html">意象分類</a></li>
-                    <li><a href="characters.html">角色設定</a></li>
-                    <li><a href="member.html">會員控制</a></li>
-                    <li><a href="submit.html" class="active">投稿靈感</a></li>
-                </ul>
-            </nav>
+            <nav><ul><li><a href="index.html">首頁</a></li><li><a href="submit.html" class="active">投稿靈感</a></li></ul></nav>
         </header>
         
         <main>
             <div id="lock-screen" style="text-align: center; padding: 40px 0;">
                 <h2>⚠️ 尚未辨識創作者身份</h2>
-                <p style="color: #7f8c8d;">此區塊需要綁定創作者權限，請先前往登入或註冊。</p>
-                <a href="member.html"><button style="width: auto;">前往會員控制台設定資料</button></a>
+                <a href="member.html"><button>前往會員控制台</button></a>
             </div>
 
             <div id="database-screen" style="display: none;">
-                <h2>
-                    創作者後台：歡迎 <span id="user-display-name" style="color: #e67e22;"></span> 
-                    <span id="user-display-avatar"></span>
-                    <span id="admin-badge" style="display:none; background-color:#9b59b6; color:white; font-size:12px; padding:3px 8px; border-radius:12px; margin-left:10px; vertical-align:middle;">👑 超級管理員</span>
-                </h2>
-                <p style="color: #7f8c8d;">發布內容將同步使用您最新的暱稱與頭像發表至首頁。</p>
+                <h2>創作者後台：歡迎 <span id="user-display-name"></span> <span id="user-display-avatar"></span></h2>
                 
-                <div style="max-width: 600px; margin-top: 25px; background: #fafafa; padding: 20px; border: 1px solid #e0e0e0; border-radius: 6px;">
-                    <h3 id="form-action-title" style="margin-top:0; color:#2c3e50;">✨ 發佈新靈感素材</h3>
-                    <input type="hidden" id="edit-index" value="-1">
-
-                    <div class="form-group">
-                        <label for="author-mode">故事廣場發表身份</label>
-                        <select id="author-mode">
-                            <option value="公開">公開（使用我的個人暱稱與頭像）</option>
-                            <option value="匿名">匿名發表（顯示為：神秘創作者 👤）</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="material-title">素材暫存標題</label>
-                        <input type="text" id="material-title" placeholder="例如：破碎的鏡中人">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="material-text">敘事文字內文</label>
-                        <textarea id="material-text" rows="4" placeholder="輸入你想分享的故事段落..."></textarea>
-                    </div>
-                    
-                    <div style="display: flex; gap: 10px;">
-                        <button type="button" id="submit-btn" onclick="processSubmit()" style="background-color: #2c3e50;">發佈至故事廣場資料庫</button>
-                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()" style="background-color: #95a5a6; display: none; width: auto;">取消修改</button>
-                    </div>
+                <div style="max-width: 600px; background: #fafafa; padding: 20px; border: 1px solid #e0e0e0;">
+                    <h3>✨ 發佈新靈感素材</h3>
+                    <input type="text" id="material-title" placeholder="標題">
+                    <textarea id="material-text" rows="4" placeholder="內文"></textarea>
+                    <button type="button" onclick="processSubmit()">發佈至雲端資料庫</button>
                 </div>
 
                 <div style="margin-top: 40px;">
-                    <h3>📋 故事總資料庫管理 (<span id="permission-hint">僅限修改/刪除自己的創作</span>)</h3>
-                    <div id="admin-posts-list"></div>
+                    <h3>📋 雲端故事總資料庫</h3>
+                    <div id="admin-posts-list">讀取中...</div>
                 </div>
             </div>
         </main>
 
         <script>
-            var userKey = ""; 
+            // === 請填入你的資訊 ===
+            const BIN_ID = "填入你的BIN_ID"; 
+            const API_KEY = "$2a$10$5Gqgl2.2muLPGwt0Gc1aDeA41/JaPd7Gn.rIs3i4C0W23aGu4bVby";
+
+            var userKey = sessionStorage.getItem("currentUser");
             var myNickname = "";
             var myAvatar = "";
-            var isAdmin = false; 
 
-            window.onload = function() {
-                var currentUser = sessionStorage.getItem("currentUser");
-                if (currentUser) {
-                    userKey = currentUser;
-                    
-                    // 檢查管理員權限
-                    if (userKey === "時初" || userKey.toLowerCase() === "admin") {
-                        isAdmin = true;
-                        document.getElementById("admin-badge").style.display = "inline-block";
-                        document.getElementById("permission-hint").innerText = "最高權限：可管理全站所有故事";
-                    }
-                    
-                    var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
-                    var myData = userDatabase[userKey] || { nickname: userKey, avatar: "🌹 黑色玫瑰" };
-                    
-                    myNickname = myData.nickname;
-                    myAvatar = myData.avatar;
+            // 讀取雲端資料
+            async function fetchFromCloud() {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const json = await res.json();
+                return json.record || [];
+            }
 
+            // 儲存雲端資料
+            async function saveToCloud(posts) {
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(posts)
+                });
+            }
+
+            window.onload = async function() {
+                if (userKey) {
                     document.getElementById("lock-screen").style.display = "none";
                     document.getElementById("database-screen").style.display = "block";
                     
-                    // 顯示名稱
-                    document.getElementById("user-display-name").innerText = myNickname;
+                    // 顯示用戶頭像 (處理圖片代碼)
+                    var userDatabase = JSON.parse(localStorage.getItem("allUsers")) || {};
+                    var myData = userDatabase[userKey] || { nickname: userKey, avatar: "👤" };
+                    document.getElementById("user-display-name").innerText = myData.nickname;
                     
-                    // 顯示頭像 (處理圖片或表情符號)
-                    var avatarDisplay = document.getElementById("user-display-avatar");
-                    if (myAvatar.startsWith("http") || myAvatar.startsWith("data:image")) {
-                        avatarDisplay.innerHTML = '<img src="' + myAvatar + '" style="width:30px; height:30px; object-fit:cover; border-radius:50%; vertical-align:middle; margin-left:5px;">';
+                    var avatarSpan = document.getElementById("user-display-avatar");
+                    if (myData.avatar.startsWith("data:image")) {
+                        avatarSpan.innerHTML = `<img src="${myData.avatar}" style="width:30px; height:30px; border-radius:50%; vertical-align:middle;">`;
                     } else {
-                        avatarDisplay.innerText = myAvatar;
+                        avatarSpan.innerText = myData.avatar;
                     }
-
-                    renderAdminPosts();
+                    
+                    renderPosts();
                 }
             };
 
-            function renderAdminPosts() {
-                var listContainer = document.getElementById("admin-posts-list");
-                var globalPosts = JSON.parse(localStorage.getItem("globalPosts")) || [];
-                var html = "";
-
-                if (globalPosts.length === 0) {
-                    listContainer.innerHTML = '<p style="color:#999; font-style:italic;">目前資料庫空空如也...</p>';
-                    return;
-                }
-
-                for (var i = globalPosts.length - 1; i >= 0; i--) {
-                    html += `<div style="background: #f9f9f9; border-left: 4px solid #34495e; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <h4>${globalPosts[i].title} <span style="font-size:12px; color:#e67e22;">✍️ ${globalPosts[i].author}</span></h4>
-                            <p>${globalPosts[i].text.replace(/\n/g, '<br>')}</p>
-                        </div>`;
-                    if (globalPosts[i].owner === userKey || isAdmin) {
-                        html += `<div>
-                            <button onclick="prepareEdit(${i})" style="background:#3498db; padding:5px 12px; font-size:12px;">✏️</button>
-                            <button onclick="deletePost(${i})" style="background:#e74c3c; padding:5px 12px; font-size:12px;">🗑️</button>
-                        </div>`;
-                    }
-                    html += `</div>`;
-                }
-                listContainer.innerHTML = html;
+            async function renderPosts() {
+                let posts = await fetchFromCloud();
+                let listContainer = document.getElementById("admin-posts-list");
+                listContainer.innerHTML = posts.map((post, i) => `
+                    <div style="border-bottom:1px solid #ccc; padding:10px;">
+                        <h4>${post.title}</h4><p>${post.text}</p>
+                        <button onclick="deletePost(${i})">刪除</button>
+                    </div>
+                `).join('');
             }
 
-            // --- 此處延續你原本的 processSubmit, prepareEdit, deletePost 邏輯 ---
-            // (為了簡潔，這裡省略重複部分，實際貼上時請確保這些 function 有包含在 script 內)
+            async function processSubmit() {
+                let title = document.getElementById('material-title').value;
+                let text = document.getElementById('material-text').value;
+                let posts = await fetchFromCloud();
+                posts.push({ title, text, author: userKey });
+                await saveToCloud(posts);
+                alert("已同步至雲端！");
+                renderPosts();
+            }
+
+            async function deletePost(index) {
+                let posts = await fetchFromCloud();
+                posts.splice(index, 1);
+                await saveToCloud(posts);
+                renderPosts();
+            }
         </script>
-        <footer>&copy; 2026 小說創作素材與意象資料庫平台 - 期末作品呈現</footer>
     </div>
 </body>
 </html>
