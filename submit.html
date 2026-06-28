@@ -47,27 +47,27 @@
 
             var userKey = sessionStorage.getItem("currentUser");
 
-            // 1. 從雲端抓取最新資料
+            // 1. 從雲端抓取資料
             async function fetchFromCloud() {
                 try {
                     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
                         headers: { 'X-Master-Key': API_KEY }
                     });
                     const json = await res.json();
-                    return json.record.posts || []; 
+                    return json.record.posts || []; // 只取 posts 陣列
                 } catch (e) {
                     console.error("雲端讀取錯誤:", e);
                     return [];
                 }
             }
 
-            // 2. 將資料存回雲端 (僅新增/更新 posts 區塊)
-            async function saveToCloud(newPostsArray) {
-                // 先取得完整物件以確保其他資料(如users)不遺失
+            // 2. 將資料存回雲端 (保留原有的 users 結構)
+            async function saveToCloud(postsArray) {
+                // 先取得完整物件以確保 users 資料不遺失
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, { headers: { 'X-Master-Key': API_KEY } });
                 const fullData = (await res.json()).record;
                 
-                fullData.posts = newPostsArray;
+                fullData.posts = postsArray; // 僅更新 posts 區塊
 
                 await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
                     method: 'PUT',
@@ -75,7 +75,7 @@
                         'Content-Type': 'application/json',
                         'X-Master-Key': API_KEY
                     },
-                    body: JSON.stringify(fullData)
+                    body: JSON.stringify(fullData) // 存回包含 users 和更新後 posts 的完整結構
                 });
             }
 
@@ -92,7 +92,7 @@
                 const isAdmin = (userKey === ADMIN_NAME);
                 
                 listContainer.innerHTML = posts.map((post, i) => `
-                    <div style="border-bottom:1px solid #ccc; padding:10px;">
+                    <div style="border-bottom:1px solid #ccc; padding:10px; margin-bottom:10px;">
                         <h4>${post.title || "無標題"}</h4>
                         <p>${post.text || "無內文"}</p>
                         <small>作者: ${post.author || "匿名"}</small>
@@ -101,7 +101,7 @@
                 `).join('');
             }
 
-            // 4. 發佈按鈕動作
+            // 4. 發佈功能
             async function processSubmit() {
                 let title = document.getElementById('material-title').value;
                 let text = document.getElementById('material-text').value;
@@ -113,11 +113,11 @@
                 
                 document.getElementById('material-title').value = "";
                 document.getElementById('material-text').value = "";
-                alert("已同步至雲端！");
+                alert("已成功同步至雲端！");
                 renderPosts();
             }
 
-            // 5. 刪除按鈕動作
+            // 5. 刪除功能
             async function deletePost(index) {
                 if(userKey !== ADMIN_NAME) return alert("權限不足");
                 let posts = await fetchFromCloud();
